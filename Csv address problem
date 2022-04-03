@@ -1,0 +1,38 @@
+If I have incoming data for address field in CSV file is seperated by comma(','), how can I handle this in Spark? If I want that data as record to my address column.
+
+Example-Suppose I have input data in form of CSV file as below,
+
+Bob,Delhi,NCR,8984124789
+Scott,Bangalore,Karnataka,9040788301
+Robert,Andheri,Mumbai,Maharastra,9338075922
+I want final dataframe as,
+
+Name   Address                    MobileNo
+Bob    Delhi,NCR                  8984124789
+Scott  Bangalore,Karnataka        9040788301
+Robert Andheri,Mumbai,Maharastra  9338075922
+
+You can use an RDD to clean up the data before making a data frame from it:
+
+rdd = sc.textFile('path-to-csv.csv')
+Then clean it up by shifting the last column in order to isolate the Address data to the end of the line:
+
+df = rdd.map(lambda l: l.split(','))\
+        .map(lambda l: Row(Name=l[0],Mobile=l[-1],Address=', '.join(l[1:-1])))\
+        .toDF()
+And to explicitly set the schema:
+
+df = rdd.map(lambda l: l.split(','))\
+    .map(lambda l: Row(Name=l[0],MobileNo=l[-1],Address=', '.join(l[1:-1])))\
+    .toDF(schema=StructType(fields=[StructField('Name',StringType()),
+                                    StructField('Address', StringType()),
+                                    StructField('MobileNo', StringType())]))
+The result:
+
++------+---------------------------+----------+
+|Name  |Address                    |MobileNo  |
++------+---------------------------+----------+
+|Bob   |Delhi, NCR                 |8984124789|
+|Scott |Bangalore, Karnataka       |9040788301|
+|Robert|Andheri, Mumbai, Maharastra|9338075922|
++------+---------------------------+----------+
